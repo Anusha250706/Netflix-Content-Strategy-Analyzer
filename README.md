@@ -1,5 +1,5 @@
 # Netflix Content Analyzer
-
+#Milestone 1 branch update
 ## 📌 Project Overview
 This project analyzes the Netflix Kaggle dataset to understand content trends, genre distribution, country contributions, and rating patterns.
 
