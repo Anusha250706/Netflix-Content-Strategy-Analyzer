@@ -1,134 +1,201 @@
+# ==============================
+# Netflix Content Strategy Analyzer
+# ==============================
+
+"""
+PROJECT SCOPE:
+This project aims to analyze Netflix's content dataset to understand 
+content distribution, growth trends, genre popularity, rating patterns, 
+and country-level contributions. The objective is to extract meaningful 
+business insights that can help understand Netflix's content strategy.
+
+The analysis includes:
+- Data cleaning and preprocessing
+- Normalization of categorical features (genre, country)
+- Exploratory Data Analysis (EDA)
+- Feature engineering (Content Length Category, Original vs Licensed)
+- Visualization of insights
+
+SUCCESS METRICS:
+The project will be considered successful if:
+
+1. The dataset is cleaned (missing values handled, duplicates removed).
+2. Categorical features such as genre and country are normalized.
+3. Visualizations clearly show:
+   - Content growth over time
+   - Distribution of genres
+   - Distribution of ratings
+   - Distribution of content type (Movies vs TV Shows)
+   - Country-level content contribution
+4. Derived features are created:
+   - Content Length Category
+   - Original vs Licensed classification
+5. All visualizations are saved successfully in the outputs folder.
+"""
+
 import pandas as pd
-import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
 import os
 
-# ==============================
-# 1. Define File Path
-# ==============================
+# ------------------------------
+# 1. Load Dataset
+# ------------------------------
+df = pd.read_csv("data/netflix_titles.csv")
 
-DATA_PATH = os.path.join("data", "netflix_titles.csv")
+print("Dataset Loaded Successfully!")
+print(df.head())
 
+# Create output folder for saving visualizations
+if not os.path.exists("outputs"):
+    os.makedirs("outputs")
 
-# ==============================
-# 2. Load Dataset
-# ==============================
+# ------------------------------
+# 2. Data Cleaning
+# ------------------------------
 
-def load_dataset(path):
-    print("Loading dataset...")
-    df = pd.read_csv(path)
-    print("Dataset loaded successfully!")
-    return df
+# Remove duplicates
+df.drop_duplicates(inplace=True)
 
+# Fill missing values
+df.fillna("Unknown", inplace=True)
 
-# ==============================
-# 3. Explore Data
-# ==============================
+# Convert date_added to datetime
+df['date_added'] = pd.to_datetime(df['date_added'], errors='coerce')
 
-def explore_data(df):
-    print("\nDataset Shape:", df.shape)
-    print("\nMissing Values:\n", df.isnull().sum())
-    print("\nDuplicate Rows:", df.duplicated().sum())
+print("\nData Cleaning Completed!")
 
+# ------------------------------
+# 3. Normalize Categorical Features
+# ------------------------------
 
-# ==============================
-# 4. Clean Data
-# ==============================
+# Normalize Genres
+df['listed_in'] = df['listed_in'].str.split(',')
+df = df.explode('listed_in')
+df['listed_in'] = df['listed_in'].str.strip()
 
-def clean_data(df):
-    print("\nCleaning data...")
+# Normalize Countries
+df['country'] = df['country'].str.split(',')
+df = df.explode('country')
+df['country'] = df['country'].str.strip()
 
-    # Remove duplicates
-    df = df.drop_duplicates()
+print("Categorical Features Normalized!")
 
-    # Fill missing values
-    df["director"] = df["director"].fillna("Unknown")
-    df["cast"] = df["cast"].fillna("Not Available")
-    df["country"] = df["country"].fillna("Unknown")
-    df["rating"] = df["rating"].fillna("Not Rated")
+# ------------------------------
+# 4. Content Type Analysis
+# ------------------------------
 
-    # Convert date column
-    df["date_added"] = pd.to_datetime(df["date_added"], errors="coerce")
+plt.figure()
+sns.countplot(data=df, x='type')
+plt.title("Movies vs TV Shows on Netflix")
+plt.xticks(rotation=45)
+plt.tight_layout()
+plt.savefig("outputs/content_type.png")
+plt.close()
 
-    # Drop rows where title is missing
-    df = df.dropna(subset=["title"])
+# ------------------------------
+# 5. Rating Distribution
+# ------------------------------
 
-    print("Cleaning completed.")
-    return df
+plt.figure()
+sns.countplot(data=df, x='rating', order=df['rating'].value_counts().index)
+plt.title("Distribution of Ratings on Netflix")
+plt.xticks(rotation=90)
+plt.tight_layout()
+plt.savefig("outputs/rating_distribution.png")
+plt.close()
 
+# ------------------------------
+# 6. Top 10 Countries
+# ------------------------------
 
-# ==============================
-# 5. Normalize Features
-# ==============================
+country_counts = df['country'].value_counts().head(10)
 
-def normalize_features(df):
-    print("\nNormalizing categorical features...")
+plt.figure()
+country_counts.plot(kind='bar')
+plt.title("Top 10 Content Producing Countries")
+plt.xticks(rotation=45)
+plt.tight_layout()
+plt.savefig("outputs/top_countries.png")
+plt.close()
 
-    df["listed_in"] = df["listed_in"].str.lower().str.strip()
-    df["country"] = df["country"].str.lower().str.strip()
-    df["rating"] = df["rating"].str.upper().str.strip()
+# ------------------------------
+# 7. Content Added Per Year
+# ------------------------------
 
-    # Split multiple values into lists
-    df["genre_list"] = df["listed_in"].str.split(",")
-    df["country_list"] = df["country"].str.split(",")
+df['year_added'] = df['date_added'].dt.year
+year_counts = df['year_added'].value_counts().sort_index()
 
-    print("Normalization completed.")
-    return df
+plt.figure()
+year_counts.plot(kind='line')
+plt.title("Content Added Per Year")
+plt.tight_layout()
+plt.savefig("outputs/content_per_year.png")
+plt.close()
 
+# ------------------------------
+# 8. Top 10 Genres
+# ------------------------------
 
-# ==============================
-# 6. Save Cleaned Data
-# ==============================
+genre_counts = df['listed_in'].value_counts().head(10)
 
-def save_cleaned_data(df):
-    output_path = os.path.join("data", "netflix_cleaned.csv")
-    df.to_csv(output_path, index=False)
-    print(f"\nCleaned dataset saved at: {output_path}")
+plt.figure()
+genre_counts.plot(kind='bar')
+plt.title("Top 10 Genres on Netflix")
+plt.xticks(rotation=45)
+plt.tight_layout()
+plt.savefig("outputs/top_genres.png")
+plt.close()
 
+# ------------------------------
+# 9. Feature Engineering
+# ------------------------------
 
-# ==============================
-# MAIN FUNCTION
-# ==============================
+# Content Length Category
+def categorize_duration(duration):
+    if "min" in duration:
+        minutes = int(duration.split()[0])
+        if minutes < 60:
+            return "Short Movie"
+        elif minutes < 120:
+            return "Medium Movie"
+        else:
+            return "Long Movie"
+    elif "Season" in duration:
+        seasons = int(duration.split()[0])
+        if seasons == 1:
+            return "Single Season Show"
+        else:
+            return "Multi-Season Show"
+    else:
+        return "Unknown"
 
-def main():
-    print("Starting Netflix Data Preparation...\n")
+df['Content_Length_Category'] = df['duration'].apply(categorize_duration)
 
-    df = load_dataset(DATA_PATH)
-    explore_data(df)
+# Original vs Licensed (simple assumption)
+df['Original_vs_Licensed'] = df['title'].apply(
+    lambda x: "Original" if "Netflix" in x else "Licensed"
+)
 
-    df = clean_data(df)
-    df = normalize_features(df)
+# ------------------------------
+# 10. Visualization of Derived Features
+# ------------------------------
 
-    save_cleaned_data(df)
+plt.figure()
+sns.countplot(data=df, x='Content_Length_Category',
+              order=df['Content_Length_Category'].value_counts().index)
+plt.title("Content Length Category Distribution")
+plt.xticks(rotation=45)
+plt.tight_layout()
+plt.savefig("outputs/content_length_category.png")
+plt.close()
 
-    print("\nMilestone 1 Completed Successfully!")
+plt.figure()
+sns.countplot(data=df, x='Original_vs_Licensed')
+plt.title("Original vs Licensed Content")
+plt.tight_layout()
+plt.savefig("outputs/original_vs_licensed.png")
+plt.close()
 
-
-# ==============================
-# RUN SCRIPT
-# ==============================
-
-
-
-def main():
-    print("Starting Netflix Data Preparation...\n")
-
-    df = load_dataset(DATA_PATH)
-    explore_data(df)
-
-    df = clean_data(df)
-    df = normalize_features(df)
-
-    save_cleaned_data(df)
-
-    print("\nData shape after cleaning:", df.shape)
-    print("\nSample data:")
-    print(df.head())
-
-    print("\nMilestone 1 Completed Successfully!")
-
-if __name__ == "__main__":
-    main()
-
-
-
-    
+print("\nAll Visualizations Saved in 'outputs' folder!")
+print("Project Execution Completed Successfully!")
