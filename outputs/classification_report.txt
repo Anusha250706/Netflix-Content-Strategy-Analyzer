@@ -1,0 +1,8 @@
+              precision    recall  f1-score   support
+
+       Movie       1.00      1.00      1.00      1214
+     TV Show       1.00      1.00      1.00       548
+
+    accuracy                           1.00      1762
+   macro avg       1.00      1.00      1.00      1762
+weighted avg       1.00      1.00      1.00      1762
