@@ -6,3 +6,5 @@ __pycache__/
 data/raw/
 data/cleaned/
 *.csv
+*.xlsx
+*.json
